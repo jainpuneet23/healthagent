@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% block title %}{{ user.name }}'s Health Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+
+  <!-- ── Page header ── -->
+  <div class="page-header">
+    <div>
+      <h1>{{ user.name }}'s Health</h1>
+      <p class="subtitle">Last 30 days · Yesterday: {{ yesterday_date }}</p>
+    </div>
+    <div class="header-actions">
+      {% if summary %}
+        <span class="score-badge score-{{ summary.score }}">{{ summary.score }}/10</span>
+      {% endif %}
+      <button class="btn-copy" onclick="copyLink()">Share My Dashboard</button>
+    </div>
+  </div>
+
+  <!-- ── AI Summary card ── -->
+  {% if summary %}
+  <section class="card ai-card">
+    <div class="card-header" onclick="toggleSummary()">
+      <h2>🤖 AI Health Summary — {{ summary.date }}</h2>
+      <span id="summary-toggle" class="toggle-icon">▼</span>
+    </div>
+    <div id="summary-body" class="summary-body">
+      <div class="summary-text">{{ summary.summary | replace('\n', '<br>') | safe }}</div>
+    </div>
+  </section>
+  {% else %}
+  <section class="card ai-card empty-card">
+    <p>No AI summary yet. Data will be analysed automatically at 8:00 AM daily.</p>
+  </section>
+  {% endif %}
+
+  <!-- ── Yesterday at a glance ── -->
+  <section class="card">
+    <h2>Yesterday at a Glance</h2>
+    <div class="metric-grid">
+      {% set metrics = [
+        ('steps',           '🚶', 'Steps',           ''),
+        ('active_calories', '🔥', 'Active Cal',      'kcal'),
+        ('exercise_minutes','⏱️',  'Exercise',        'min'),
+        ('resting_hr',      '❤️', 'Resting HR',      'bpm'),
+        ('hrv',             '📈', 'HRV',             'ms'),
+        ('sleep_total',     '😴', 'Sleep',           ''),
+        ('spo2',            '🫁', 'SpO2',            '%'),
+        ('respiratory_rate','💨', 'Resp Rate',       'br/min'),
+      ] %}
+      {% for key, icon, label, unit in metrics %}
+        {% if key in yesterday %}
+        <div class="metric-card">
+          <span class="metric-icon">{{ icon }}</span>
+          <span class="metric-label">{{ label }}</span>
+          {% if key == 'sleep_total' %}
+            {% set hrs = (yesterday[key] // 60) | int %}
+            {% set mins = (yesterday[key] % 60) | int %}
+            <span class="metric-value">{{ hrs }}h {{ mins }}m</span>
+          {% elif key == 'steps' %}
+            <span class="metric-value">{{ "{:,.0f}".format(yesterday[key]) }}</span>
+          {% else %}
+            <span class="metric-value">{{ "%.1f"|format(yesterday[key]) }} <small>{{ unit }}</small></span>
+          {% endif %}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ── Charts ── -->
+  <div class="charts-grid">
+
+    <section class="card chart-card">
+      <h2>Steps (30 days)</h2>
+      <canvas id="stepsChart"></canvas>
+    </section>
+
+    <section class="card chart-card">
+      <h2>Sleep Duration (30 days)</h2>
+      <canvas id="sleepChart"></canvas>
+    </section>
+
+    <section class="card chart-card">
+      <h2>Resting Heart Rate (30 days)</h2>
+      <canvas id="hrChart"></canvas>
+    </section>
+
+    <section class="card chart-card">
+      <h2>HRV — Heart Rate Variability (30 days)</h2>
+      <canvas id="hrvChart"></canvas>
+    </section>
+
+    <section class="card chart-card">
+      <h2>Blood Oxygen SpO2 (30 days)</h2>
+      <canvas id="spo2Chart"></canvas>
+    </section>
+
+    <section class="card chart-card">
+      <h2>Active Calories (30 days)</h2>
+      <canvas id="calChart"></canvas>
+    </section>
+
+  </div>
+
+</div>
+
+<script>
+const metricData = {{ metric_data_json | safe }};
+
+function getSeriesData(metricType) {
+  const series = metricData[metricType] || {};
+  const dates = Object.keys(series).sort();
+  const values = dates.map(d => series[d]);
+  return { dates, values };
+}
+
+function shortDate(d) {
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+}
+
+const chartDefaults = {
+  responsive: true,
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { ticks: { maxTicksLimit: 7, maxRotation: 0 } },
+    y: { beginAtZero: false }
+  }
+};
+
+// ── Steps ──
+(function() {
+  const { dates, values } = getSeriesData('steps');
+  if (!dates.length) return;
+  new Chart(document.getElementById('stepsChart'), {
+    type: 'bar',
+    data: {
+      labels: dates.map(shortDate),
+      datasets: [{ data: values, backgroundColor: '#6366f1', borderRadius: 4 }]
+    },
+    options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { beginAtZero: true } } }
+  });
+})();
+
+// ── Sleep (total in hours) ──
+(function() {
+  const { dates, values } = getSeriesData('sleep_total');
+  if (!dates.length) return;
+  const hoursValues = values.map(v => +(v / 60).toFixed(2));
+  new Chart(document.getElementById('sleepChart'), {
+    type: 'bar',
+    data: {
+      labels: dates.map(shortDate),
+      datasets: [{ data: hoursValues, backgroundColor: '#8b5cf6', borderRadius: 4, label: 'Hours' }]
+    },
+    options: {
+      ...chartDefaults,
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => {
+          const h = Math.floor(ctx.raw);
+          const m = Math.round((ctx.raw - h) * 60);
+          return `${h}h ${m}m`;
+        }}
+      }},
+      scales: { ...chartDefaults.scales, y: { beginAtZero: true, title: { display: true, text: 'Hours' } } }
+    }
+  });
+})();
+
+// ── Resting HR ──
+(function() {
+  const { dates, values } = getSeriesData('resting_hr');
+  if (!dates.length) return;
+  new Chart(document.getElementById('hrChart'), {
+    type: 'line',
+    data: {
+      labels: dates.map(shortDate),
+      datasets: [{ data: values, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.3, pointRadius: 3 }]
+    },
+    options: { ...chartDefaults }
+  });
+})();
+
+// ── HRV ──
+(function() {
+  const { dates, values } = getSeriesData('hrv');
+  if (!dates.length) return;
+  new Chart(document.getElementById('hrvChart'), {
+    type: 'line',
+    data: {
+      labels: dates.map(shortDate),
+      datasets: [{ data: values, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.3, pointRadius: 3 }]
+    },
+    options: { ...chartDefaults }
+  });
+})();
+
+// ── SpO2 ──
+(function() {
+  const { dates, values } = getSeriesData('spo2');
+  if (!dates.length) return;
+  new Chart(document.getElementById('spo2Chart'), {
+    type: 'line',
+    data: {
+      labels: dates.map(shortDate),
+      datasets: [{ data: values, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.3, pointRadius: 3 }]
+    },
+    options: {
+      ...chartDefaults,
+      scales: { ...chartDefaults.scales, y: { min: 90, max: 100 } }
+    }
+  });
+})();
+
+// ── Active Calories ──
+(function() {
+  const { dates, values } = getSeriesData('active_calories');
+  if (!dates.length) return;
+  new Chart(document.getElementById('calChart'), {
+    type: 'bar',
+    data: {
+      labels: dates.map(shortDate),
+      datasets: [{ data: values, backgroundColor: '#f59e0b', borderRadius: 4 }]
+    },
+    options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { beginAtZero: true } } }
+  });
+})();
+
+// ── Share link ──
+function copyLink() {
+  navigator.clipboard.writeText(window.location.href).then(() => {
+    const btn = document.querySelector('.btn-copy');
+    btn.textContent = 'Link Copied!';
+    setTimeout(() => btn.textContent = 'Share My Dashboard', 2000);
+  });
+}
+
+// ── Toggle summary ──
+function toggleSummary() {
+  const body = document.getElementById('summary-body');
+  const icon = document.getElementById('summary-toggle');
+  body.classList.toggle('collapsed');
+  icon.textContent = body.classList.contains('collapsed') ? '▶' : '▼';
+}
+</script>
+{% endblock %}

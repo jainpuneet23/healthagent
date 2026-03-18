@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Environment & secrets
+.env
+
+# Database (local only — Render uses PostgreSQL)
+health.db
+*.db
+
+# Debug output
+debug_payload.json
+server.log
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
