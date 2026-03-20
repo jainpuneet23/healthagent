@@ -178,6 +178,45 @@ def _parse_date(raw: str) -> date | None:
 # Routes
 # ---------------------------------------------------------------------------
 
+@app.post("/webhook")
+async def receive_health_data_simple(request: Request, db: Session = Depends(get_db)):
+    """Tokenless webhook — writes to the first user in the DB. For single-user personal use."""
+    user = db.query(User).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="No users found. Create one via /admin/create-user")
+
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    debug_path = os.path.join(os.path.dirname(__file__), "debug_payload.json")
+    with open(debug_path, "w") as f:
+        json.dump(payload, f, indent=2, default=str)
+
+    records = parse_health_auto_export(payload)
+
+    saved = 0
+    for rec in records:
+        db.query(HealthMetric).filter(
+            HealthMetric.user_id == user.id,
+            HealthMetric.date == rec["date"],
+            HealthMetric.metric_type == rec["metric_type"],
+        ).delete()
+        metric = HealthMetric(
+            user_id=user.id,
+            date=rec["date"],
+            metric_type=rec["metric_type"],
+            value=rec["value"],
+            unit=rec["unit"],
+        )
+        db.add(metric)
+        saved += 1
+
+    db.commit()
+    return {"status": "ok", "records_saved": saved, "user": user.name}
+
+
 @app.post("/debug/webhook/{user_token}")
 async def debug_webhook(user_token: str, request: Request, db: Session = Depends(get_db)):
     """Debug endpoint: saves raw payload to debug_payload.json and returns parsed records (does NOT save to DB)."""
