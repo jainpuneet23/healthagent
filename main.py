@@ -297,6 +297,47 @@ def get_raw_data(user_token: str, days: int = 30, db: Session = Depends(get_db))
     }
 
 
+@app.post("/admin/create-user")
+async def create_user(request: Request, db: Session = Depends(get_db)):
+    """Create a new user and return their webhook/dashboard URLs. Protected by ADMIN_SECRET."""
+    body = await request.json()
+    if body.get("secret") != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    name = body.get("name", "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name is required")
+    import uuid
+    token = str(uuid.uuid4())
+    user = User(name=name, token=token)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {
+        "name": user.name,
+        "token": user.token,
+        "webhook_url": f"/webhook/{token}",
+        "dashboard_url": f"/dashboard/{token}",
+        "note": "Prepend your base URL to webhook_url and dashboard_url",
+    }
+
+
+@app.get("/admin/users")
+def list_users(secret: str, db: Session = Depends(get_db)):
+    """List all users and their tokens. Protected by ADMIN_SECRET."""
+    if secret != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    users = db.query(User).all()
+    return [
+        {
+            "name": u.name,
+            "token": u.token,
+            "webhook_url": f"/webhook/{u.token}",
+            "dashboard_url": f"/dashboard/{u.token}",
+        }
+        for u in users
+    ]
+
+
 @app.post("/admin/run-analysis")
 async def run_analysis(request: Request, db: Session = Depends(get_db)):
     """Manually trigger the AI health agent for all users. Protected by ADMIN_SECRET."""
