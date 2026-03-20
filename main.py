@@ -74,24 +74,35 @@ def parse_health_auto_export(payload: dict) -> list[dict]:
     # Mapping from Health Auto Export metric names to our internal names
     METRIC_MAP = {
         # Activity
-        "step_count":                    ("steps",              "count"),
-        "walking_running_distance":      ("distance_km",        "km"),
-        "active_energy_burned":          ("active_calories",    "kcal"),
-        "active_energy":                 ("active_calories",    "kcal"),
-        "apple_exercise_time":           ("exercise_minutes",   "minutes"),
-        "apple_stand_hour":              ("stand_hours",        "count"),
+        "step_count":                         ("steps",                 "count"),
+        "walking_running_distance":           ("distance_km",           "km"),
+        "active_energy_burned":               ("active_calories",       "kcal"),
+        "active_energy":                      ("active_calories",       "kcal"),
+        "apple_exercise_time":                ("exercise_minutes",      "minutes"),
+        "apple_stand_hour":                   ("stand_hours",           "count"),
+        "apple_stand_time":                   ("stand_minutes",         "minutes"),
+        "flights_climbed":                    ("flights_climbed",       "count"),
+        # Walking gait
+        "walking_speed":                      ("walking_speed",         "km/h"),
+        "walking_step_length":                ("walking_step_length",   "m"),
+        "walking_asymmetry_percentage":       ("walking_asymmetry",     "%"),
+        "walking_double_support_percentage":  ("walking_double_supp",   "%"),
+        # Running
+        "running_speed":                      ("running_speed",         "km/h"),
+        "running_stride_length":              ("running_stride",        "m"),
+        "running_power":                      ("running_power",         "W"),
         # Heart
-        "resting_heart_rate":            ("resting_hr",         "bpm"),
-        "heart_rate":                    ("avg_hr",             "bpm"),
-        "heart_rate_variability_sdnn":   ("hrv",                "ms"),
+        "resting_heart_rate":                 ("resting_hr",            "bpm"),
+        "heart_rate":                         ("avg_hr",                "bpm"),
+        "heart_rate_variability_sdnn":        ("hrv",                   "ms"),
         # Sleep
-        "sleep_analysis":                ("sleep_total",        "minutes"),
+        "sleep_analysis":                     ("sleep_total",           "minutes"),
         # SpO2
-        "oxygen_saturation":             ("spo2",               "%"),
+        "oxygen_saturation":                  ("spo2",                  "%"),
         # Breathing
-        "respiratory_rate":              ("respiratory_rate",   "breaths/min"),
+        "respiratory_rate":                   ("respiratory_rate",      "breaths/min"),
         # Mindfulness / Stress (if Zepp writes these)
-        "mindful_minutes":               ("mindful_minutes",    "minutes"),
+        "mindful_minutes":                    ("mindful_minutes",       "minutes"),
     }
 
     # Sleep sub-types from Health Auto Export (nested under sleep_analysis)
@@ -149,7 +160,7 @@ def parse_health_auto_export(payload: dict) -> list[dict]:
                     daily.setdefault(day, []).append(float(qty))
 
             for day, values in daily.items():
-                if internal_name in ("steps", "active_calories", "exercise_minutes", "stand_hours", "distance_km"):
+                if internal_name in ("steps", "active_calories", "exercise_minutes", "stand_hours", "stand_minutes", "distance_km", "flights_climbed"):
                     agg = sum(values)
                 else:
                     agg = sum(values) / len(values)
