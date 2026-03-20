@@ -377,6 +377,15 @@ def list_users(secret: str, db: Session = Depends(get_db)):
     ]
 
 
+@app.post("/analyse/{user_token}")
+async def analyse_user_endpoint(user_token: str, db: Session = Depends(get_db)):
+    """Trigger AI analysis for a single user via their token. Called from the dashboard button."""
+    user = get_user_by_token(user_token, db)
+    from health_agent import analyze_user
+    result = analyze_user(user.id, db)
+    return {"status": "ok", "user": user.name, "result": result}
+
+
 @app.post("/admin/run-analysis")
 async def run_analysis(request: Request, db: Session = Depends(get_db)):
     """Manually trigger the AI health agent for all users. Protected by ADMIN_SECRET."""

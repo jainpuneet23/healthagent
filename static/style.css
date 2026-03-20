@@ -124,6 +124,19 @@ body {
   transition: opacity 0.15s;
 }
 .btn-copy:hover { opacity: 0.85; }
+.btn-analyse {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-analyse:hover:not(:disabled) { background: var(--accent); color: #fff; }
+.btn-analyse:disabled { opacity: 0.5; cursor: default; }
+.empty-card { display: flex; flex-direction: column; align-items: center; gap: 14px; }
 
 /* ── AI Summary card ── */
 .ai-card .card-header {

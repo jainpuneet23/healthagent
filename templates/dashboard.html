@@ -23,7 +23,10 @@
   <section class="card ai-card">
     <div class="card-header" onclick="toggleSummary()">
       <h2>🤖 AI Health Summary — {{ summary.date }}</h2>
-      <span id="summary-toggle" class="toggle-icon">▼</span>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="btn-analyse" id="analyse-btn" onclick="event.stopPropagation();runAnalysis()">Re-analyse</button>
+        <span id="summary-toggle" class="toggle-icon">▼</span>
+      </div>
     </div>
     <div id="summary-body" class="summary-body">
       <div class="summary-text">{{ summary.summary | replace('\n', '<br>') | safe }}</div>
@@ -31,7 +34,8 @@
   </section>
   {% else %}
   <section class="card ai-card empty-card">
-    <p>No AI summary yet. Data will be analysed automatically at 8:00 AM daily.</p>
+    <p>No AI summary yet.</p>
+    <button class="btn-analyse" id="analyse-btn" onclick="runAnalysis()">Analyse Now</button>
   </section>
   {% endif %}
 
@@ -227,6 +231,26 @@ const chartDefaults = {
     options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { beginAtZero: true } } }
   });
 })();
+
+// ── Analyse ──
+async function runAnalysis() {
+  const btn = document.getElementById('analyse-btn');
+  btn.textContent = 'Analysing…';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/analyse/{{ user_token }}', { method: 'POST' });
+    if (res.ok) {
+      btn.textContent = 'Done!';
+      setTimeout(() => window.location.reload(), 800);
+    } else {
+      btn.textContent = 'Failed — try again';
+      btn.disabled = false;
+    }
+  } catch {
+    btn.textContent = 'Error — try again';
+    btn.disabled = false;
+  }
+}
 
 // ── Share link ──
 function copyLink() {
