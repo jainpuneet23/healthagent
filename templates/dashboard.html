@@ -14,6 +14,7 @@
       {% if summary %}
         <span class="score-badge score-{{ summary.score }}">{{ summary.score }}/10</span>
       {% endif %}
+      <button class="btn-analyse" id="analyse-btn" onclick="runAnalysis()">Analyse</button>
       <button class="btn-copy" onclick="copyLink()">Share My Dashboard</button>
     </div>
   </div>
@@ -23,10 +24,7 @@
   <section class="card ai-card">
     <div class="card-header" onclick="toggleSummary()">
       <h2>🤖 AI Health Summary — {{ summary.date }}</h2>
-      <div style="display:flex;align-items:center;gap:12px;">
-        <button class="btn-analyse" id="analyse-btn" onclick="event.stopPropagation();runAnalysis()">Re-analyse</button>
-        <span id="summary-toggle" class="toggle-icon">▼</span>
-      </div>
+      <span id="summary-toggle" class="toggle-icon">▼</span>
     </div>
     <div id="summary-body" class="summary-body">
       <div class="summary-text">{{ summary.summary | replace('\n', '<br>') | safe }}</div>
@@ -34,8 +32,7 @@
   </section>
   {% else %}
   <section class="card ai-card empty-card">
-    <p>No AI summary yet.</p>
-    <button class="btn-analyse" id="analyse-btn" onclick="runAnalysis()">Analyse Now</button>
+    <p>No AI summary yet. Click "Analyse" above to generate one.</p>
   </section>
   {% endif %}
 
