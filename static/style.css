@@ -125,16 +125,17 @@ body {
 }
 .btn-copy:hover { opacity: 0.85; }
 .btn-analyse {
-  background: transparent;
-  color: var(--accent);
-  border: 1px solid var(--accent);
-  padding: 6px 14px;
+  background: var(--green);
+  color: #fff;
+  border: none;
   border-radius: 8px;
-  font-size: 0.85rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: opacity 0.15s;
 }
-.btn-analyse:hover:not(:disabled) { background: var(--accent); color: #fff; }
+.btn-analyse:hover:not(:disabled) { opacity: 0.85; }
 .btn-analyse:disabled { opacity: 0.5; cursor: default; }
 .empty-card { display: flex; flex-direction: column; align-items: center; gap: 14px; }
 
